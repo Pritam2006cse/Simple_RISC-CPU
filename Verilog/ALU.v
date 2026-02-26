@@ -25,7 +25,7 @@ assign mux_2= (ALUControl[2:0]==3'b000) ? sum:
               (ALUControl[2:0]==3'b011) ? a_or_b:
               (ALUControl[2:0]==3'b100) ? mul:
               (ALUControl[2:0]==3'b101) ? div:
-              32'b0;
+              16'b0;
 assign Result=mux_2;
 
 endmodule

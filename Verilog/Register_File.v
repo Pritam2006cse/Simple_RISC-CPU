@@ -7,7 +7,8 @@ module Register_File(
     input [2:0] rd,
     input [15:0] wd,
     output [15:0] rd1,
-    output [15:0] rd2
+    output [15:0] rd2,
+    output [15:0] r7_out
 );
 
 reg [15:0] regs[7:0];
@@ -15,7 +16,7 @@ reg [15:0] regs[7:0];
 assign rd1= regs[rs1];
 assign rd2= regs[rs2];
 
-always @(posedge clk) begin
+always @(posedge clk or posedge reset) begin
     if(reset) begin
         regs[0]<=16'b0;
         regs[1]<=16'b0;

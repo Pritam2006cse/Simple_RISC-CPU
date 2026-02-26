@@ -12,12 +12,15 @@ wire [3:0] opcode;
 wire [2:0] rs1,rs2,rd;
 wire [15:0] reg_data1,reg_data2;
 wire [15:0] alu_result;
+wire [15:0] reg7_out;
 wire RegWrite;
+wire halt;
 
 pc pc0(
     .clk(clk),
     .reset(reset),
-    .PC(pc_val)
+    .PC(pc_val),
+    .halt(halt)
 );
 
 instr_mem IM0 (
@@ -33,7 +36,8 @@ assign rd= instr[5:3];
 control_unit CU(
     .opcode(opcode),
     .ALUControl(ALUControl),
-    .RegWrite(RegWrite)
+    .RegWrite(RegWrite),
+    .halt(halt)
 );
 
 Register_File rf(
@@ -45,7 +49,8 @@ Register_File rf(
     .wd(alu_result),
     .rd1(reg_data1),
     .rd2(reg_data2),
-    .rd(rd)
+    .rd(rd),
+    .r7_out(reg7_out)
 );
 
 alu ALU0(
@@ -55,6 +60,8 @@ alu ALU0(
     .Result(alu_result)
 );
 
-assign Result =alu_result;
+//output [15:0] reg7_out
+//assign reg7_out = regs[7];
+assign Result = reg7_out;
 
 endmodule

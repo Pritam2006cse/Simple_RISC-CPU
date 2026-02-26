@@ -19,7 +19,7 @@ class Assembler
 			System.out.println("Reading line: " + line);
 			int instruction = AssembleInstruction(line);
 			memory[address++] = instruction;
-			String binaryString = (String.format("%6s",Integer.toBinaryString(instruction))).replaceAll(" ","0");
+			String binaryString = (String.format("%16s",Integer.toBinaryString(instruction))).replaceAll(" ","0");
 			ps.println(binaryString);
 		}
 		reader.close();
