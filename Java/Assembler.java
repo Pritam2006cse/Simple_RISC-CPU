@@ -11,7 +11,7 @@ class Assembler
 		int address = 0;
 		String line;
 		BufferedReader reader = new BufferedReader(new FileReader(filename));
-		FileOutputStream fos = new FileOutputStream("../verilog/Program_log.mem");
+		FileOutputStream fos = new FileOutputStream("../Verilog/Program_Log.mem");
 		PrintStream ps = new PrintStream(fos);
 		while((line = reader.readLine()) != null)
 		{
@@ -85,5 +85,22 @@ class Assembler
 	{
 		return Integer.parseInt(reg.substring(1));
 	}
+
+	public static void main(String[] args) throws IOException {
+
+    if (args.length != 2) {
+        System.out.println("Usage: java Assembler <input.asm> <output.mem>");
+        return;
+    }
+
+    String inputFile = args[0];
+
+    int memory[] = new int[1024];   // instruction memory size
+
+    Assembler assembler = new Assembler();
+    assembler.assemble(inputFile, memory);
+
+    System.out.println("Assembly completed successfully.");
+}
 	
 }

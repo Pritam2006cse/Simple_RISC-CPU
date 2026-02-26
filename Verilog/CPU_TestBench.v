@@ -1,4 +1,4 @@
-module CPU_TestBench()
+module CPU_TestBench();
 reg clk;
 reg reset;
 wire [15:0] Result;
