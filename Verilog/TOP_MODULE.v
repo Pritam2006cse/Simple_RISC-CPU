@@ -22,6 +22,9 @@ wire [15:0] reg_data1, reg_data2;
 wire [15:0] alu_result;
 wire [15:0] reg7_out;
 
+wire MemRead, MemWrite, MemtoReg;
+wire [15:0] mem_read_data;
+
 // ---------------- Program Counter ----------------
 pc pc0(
     .clk(clk),
@@ -54,7 +57,7 @@ wire [15:0] imm_ext = {{10{imm6[5]}}, imm6};
 
 // Select correct fields based on instruction type
 assign rs1 = ALUSrc ? rs1_i : rs1_r;
-assign rs2 = rs2_r;                 // used only for R-type
+assign rs2 = (opcode == 4'b0111) ? rd_i : rs2_r;                // used only for R-type
 assign rd  = ALUSrc ? rd_i  : rd_r;
 
 // ---------------- Control Unit ----------------
@@ -63,7 +66,10 @@ control_unit CU(
     .ALUControl(ALUControl),
     .RegWrite(RegWrite),
     .ALUSrc(ALUSrc),
-    .halt(halt)
+    .halt(halt),
+    .MemRead(MemRead),
+    .MemWrite(MemWrite),
+    .MemtoReg(MemtoReg)
 );
 
 // ---------------- Register File ----------------
@@ -74,7 +80,7 @@ Register_File rf(
     .rs1(rs1),
     .rs2(rs2),
     .rd(rd),
-    .wd(alu_result),
+    .wd(write_back),
     .rd1(reg_data1),
     .rd2(reg_data2),
     .r7_out(reg7_out)
@@ -91,6 +97,20 @@ alu ALU0(
     .ALUControl(ALUControl),
     .Result(alu_result)
 );
+
+data_memory DM(
+    .clk(clk),
+    .MemWrite(MemWrite),
+    .MemRead(MemRead),
+    .addr(alu_result),
+    .write_data(reg_data2),   // value to store
+    .read_data(mem_read_data)
+);
+
+// ---------------- Writeback MUX ----------------
+wire [15:0] write_back;
+
+assign write_back = MemtoReg ? mem_read_data : alu_result;
 
 // ---------------- Outputs ----------------
 assign Result  = reg7_out;   // Final program result
