@@ -15,6 +15,7 @@ reg [15:0] regs[7:0];
 
 assign rd1= regs[rs1];
 assign rd2= regs[rs2];
+assign r7_out = regs[7];
 
 always @(posedge clk or posedge reset) begin
     if(reset) begin
