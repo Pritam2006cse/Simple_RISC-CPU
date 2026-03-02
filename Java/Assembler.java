@@ -6,27 +6,44 @@ import java.io.PrintStream;
 import java.util.*;
 class Assembler 
 {
-	public void assemble(String filename, int memory[]) throws IOException
+	public HashMap<String,Integer> assemble(String filename, int memory[]) throws IOException
 	{
 		int address = 0;
 		String line;
+		List<String> lines = new ArrayList<>();
 		BufferedReader reader = new BufferedReader(new FileReader(filename));
-		FileOutputStream fos = new FileOutputStream("../verilog/Program_log.mem");
-		PrintStream ps = new PrintStream(fos);
+		HashMap<String,Integer> labelTable = new HashMap<>();
 		while((line = reader.readLine()) != null)
 		{
 			line = line.trim();
-			System.out.println("Reading line: " + line);
-			int instruction = AssembleInstruction(line);
+			if(line.isEmpty()) continue;
+			if(line.endsWith(":"))
+			{
+				String label = line.substring(0,line.length()-1);
+				labelTable.put(label, address);
+			}
+			else
+			{
+				lines.add(line);
+				address++;
+			}
+		}
+		reader.close();
+		FileOutputStream fos = new FileOutputStream(System.getProperty("user.dir") + "/Program_log.mem");
+		PrintStream ps = new PrintStream(fos);
+		address = 0;
+		for(String instructionLines : lines)
+		{
+			int instruction = AssembleInstruction(labelTable,instructionLines,address);
 			memory[address++] = instruction;
 			String binaryString = (String.format("%16s",Integer.toBinaryString(instruction))).replaceAll(" ","0");
 			ps.println(binaryString);
 		}
-		reader.close();
 		ps.close();
 		fos.close();
+		return labelTable;
 	}
-	public int AssembleInstruction(String line)
+	public int AssembleInstruction(HashMap<String,Integer> labelTable,String line,int currentAddress)
 	{
 		HashMap<String,Integer> opcode = new HashMap<>();
 		opcode.put("ADD",0x1);
@@ -40,6 +57,8 @@ class Assembler
 		opcode.put("BNEQ",0x9);
 		opcode.put("PUSH",0xA);
 		opcode.put("POP",0xB);
+		opcode.put("CALL", 0xC);
+		opcode.put("RET", 0xD);
 		opcode.put("HALT",0xF);
 		String parts[] = line.split("\\s+");
 		String op_mne = parts[0].toUpperCase();
@@ -68,13 +87,34 @@ class Assembler
 										break;
 		case "BEQ","BNEQ":				int src_reg1B = parseRegister(parts[1]);
 										int src_reg2B = parseRegister(parts[2]);
-										int immB = Integer.parseInt(parts[3]);
+										int immB;
+										String target = parts[3];
+										if (labelTable.containsKey(target)) 
+										{
+										    int targetAddr = labelTable.get(target);
+										    immB = targetAddr - currentAddress;  // relative branch
+										} else 
+										{
+										    immB = Integer.parseInt(target);
+										}
 										String bin_immB = (String.format("%6s", Integer.toBinaryString(immB))).replaceAll(" ","0");
 										int formated_immB = Integer.parseInt(bin_immB,2);
 										instruction = instruction | (src_reg1B << 9);
 										instruction = instruction | (src_reg2B << 6);
 										instruction = instruction | (formated_immB & 0x3F);
 										break;
+		case "CALL":					String label = parts[1];
+										int targetAddress;
+										if(labelTable.containsKey(label))
+										{
+											targetAddress = labelTable.get(label);
+										}
+										else
+										{
+											targetAddress = Integer.parseInt(label);
+										}
+										instruction = instruction | (targetAddress & 0xFFFF);
+		case "RET":						break;
 		case "HALT":					break;
 		default:						throw new RuntimeException ("Unknown Instruction "+op_mne);
 										
@@ -85,5 +125,4 @@ class Assembler
 	{
 		return Integer.parseInt(reg.substring(1));
 	}
-	
 }

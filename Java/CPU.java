@@ -1,12 +1,16 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
 public class CPU 
 {
-	double registers[] = new double[8]; //8 registers each capable to store 16 bit data
+	int taskID;
+	int registers[]; //8 registers each capable to store 16 bit data
 	int memory[] = new int[256]; //it can store 256 words, 16bit memory
-	int pc = 0;//program counter
-	boolean running = true; //initially no process running
-	public void run()
+	int pc;//program counter
+	boolean running; //initially no process running
+	/*public void run()
 	{
 		try
 		{
@@ -22,7 +26,7 @@ public class CPU
 		{
 			running = false;
 		}
-	}
+	}*/
 	public void DecodeAndExecute(int instruction) //extracting the opcode and performing the operation accordingly
 	{
 		int opcode = (instruction >> 12) & 0xF;
@@ -50,10 +54,38 @@ public class CPU
 					break;
 		case 0xB :	executePop(instruction);
 					break;
+		case 0xC :	executeCall(instruction);
+					break;
+		case 0xD :	executeRet(instruction);
+					break;
 		case 0xF : System.out.println("Program Halted");
 					running = false;
 					break;
 		}
+	}
+	public void executeCall(int instruction)
+	{
+		    int address = instruction & 0x0FFF;
+		    if (registers[7] <= 0) {
+		        System.out.println("Stack overflow during CALL");
+		        running = false;
+		        return;
+		    }
+		    registers[7]--;
+		    memory[(int) registers[7]] = pc;   // push return address
+		    pc = address;                // jump
+		    System.out.println("[Task "+taskID+"] "+"CALL executed to address: " + address);
+	}
+	public void executeRet(int instruction)
+	{
+	    if (registers[7] >= 256) {
+	        System.out.println("Stack underflow during RET");
+	        running = false;
+	        return;
+	    }
+	    pc = memory[(int) registers[7]];
+	    registers[7]++;
+	    System.out.println("[Task "+taskID+"] "+"RET executed");
 	}
 	public void executePush(int instruction) //opcode SrcReg
 	{
@@ -68,14 +100,14 @@ public class CPU
 			System.out.println("Stack overflow");
 		}
 		memory[(int)registers[7]] = (int)registers[src_reg];
-		System.out.println("Push instruction executed.");
+		System.out.println("[Task "+taskID+"] "+"Push instruction executed.");
 	}
 	public void executePop(int instruction) //opcode DestReg
 	{
 		int dest_reg = (instruction >> 9) & 0x7;
 		registers[dest_reg] = memory[(int)registers[7]];
 		registers[7]++;
-		System.out.println("Pop instruction executed: "+registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Pop instruction executed: "+registers[dest_reg]);
 	}
 	public void executeBranchNotEqual(int instruction) //opcode SrcReg1 SrcReg2 ImmediateValue
 	{
@@ -85,7 +117,7 @@ public class CPU
 		if(registers[src_reg1] != registers[src_reg2])
 		{
 			pc = pc+imm_val;
-			System.out.println("BNE Branch Taken");
+			System.out.println("[Task "+taskID+"] "+"BNE Branch Taken");
 		}
 	}
 	public void executeBranchEqual(int instruction) //opcode SrcReg1 SrcReg2 ImmediateValue
@@ -96,7 +128,7 @@ public class CPU
 		if(registers[src_reg1] == registers[src_reg2])
 		{
 			pc = pc+imm_val;
-			System.out.println("BEQ Branch Taken");
+			System.out.println("[Task "+taskID+"] "+"BEQ Branch Taken");
 		}
 	}
 	public void executeStore(int instruction) //Opcode DestReg SrcReg ImmediateValue
@@ -105,7 +137,7 @@ public class CPU
 		int src_reg1 = (instruction >> 6) & 0x7;
 		int imm_val = instruction & 0x3F;
 		memory[((int)registers[src_reg1]) + imm_val] = (int)(registers[dest_reg]);
-		System.out.println("Store Instruction Executed: "+ memory[((int)registers[src_reg1]) + imm_val]);
+		System.out.println("[Task "+taskID+"] "+"Store Instruction Executed: "+ memory[((int)registers[src_reg1]) + imm_val]);
 	}
 	public void executeLoad(int instruction) //Opcode DestReg SrcReg ImmediateValue
 	{
@@ -113,7 +145,7 @@ public class CPU
 		int src_reg1 = (instruction >> 6) & 0x7;
 		int imm_val = instruction & 0x3F;
 		registers[dest_reg] = memory[((int)registers[src_reg1]) + imm_val];
-		System.out.println("Load Instruction Executed: "+ registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Load Instruction Executed: "+ registers[dest_reg]);
 	}
 	public void executeAddImmediate(int instruction) // Immediate Addressing Mode--> Opcode DestReg SrcReg ImmediateValue
 	{
@@ -121,7 +153,7 @@ public class CPU
 		int src_reg1 = (instruction >> 6) & 0x7;
 		int imm_val = instruction & 0x3F;
 		registers[dest_reg] = registers[src_reg1] + imm_val;
-		System.out.println("Add Immediate Instruction Executed: "+ registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Add Immediate Instruction Executed: "+ registers[dest_reg]);
 	}
 	public void executeAdd(int instruction) // Opcode SrcReg SrcReg DestReg ImmediateValue(now 0)
 	{
@@ -129,7 +161,7 @@ public class CPU
 		int src_reg2 = (instruction >> 6) & 0x7;
 		int dest_reg = (instruction >> 3) & 0x7;
 		registers[dest_reg] = registers[src_reg1] + registers[src_reg2];
-		System.out.println("Add Instruction Executed: "+registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Add Instruction Executed: "+registers[dest_reg]);
 	}
 	public void executeSub(int instruction) // Opcode SrcReg SrcReg DestReg ImmediateValue(now 0)
 	{
@@ -137,7 +169,7 @@ public class CPU
 		int src_reg2 = (instruction >> 6) & 0x7;
 		int dest_reg = (instruction >> 3) & 0x7;
 		registers[dest_reg] = registers[src_reg1] - registers[src_reg2];
-		System.out.println("Sub Instruction Executed: "+registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Sub Instruction Executed: "+registers[dest_reg]);
 	}
 	public void executeMul(int instruction) // Opcode SrcReg SrcReg DestReg ImmediateValue(now 0)
 	{
@@ -145,7 +177,7 @@ public class CPU
 		int src_reg2 = (instruction >> 6) & 0x7;
 		int dest_reg = (instruction >> 3) & 0x7;
 		registers[dest_reg] = registers[src_reg1] * registers[src_reg2];
-		System.out.println("Mul Instruction Executed: "+registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Mul Instruction Executed: "+registers[dest_reg]);
 	}
 	public void executeDiv(int instruction) // Opcode SrcReg SrcReg DestReg ImmediateValue(now 0)
 	{
@@ -160,20 +192,74 @@ public class CPU
 		{
 			registers[dest_reg] = registers[src_reg1] / registers[src_reg2];
 		}
-		System.out.println("Div Instruction Executed: "+registers[dest_reg]);
+		System.out.println("[Task "+taskID+"] "+"Div Instruction Executed: "+registers[dest_reg]);
+	}
+	public void loadProgram(String filename) throws NumberFormatException, IOException
+	{
+		BufferedReader br = new BufferedReader(new FileReader(filename));
+		String line;
+		int address = 0;
+		while((line=br.readLine()) != null)
+		{
+			memory[address++] = Integer.parseInt(line.trim(),2);
+		}
+		br.close();
+	}
+	public void loadTask(Task task)
+	{
+		this.registers = task.register;
+		this.pc = task.pc;
+		this.running = task.running;
+		this.taskID = task.id;
+	}
+	public void saveTask(Task task)
+	{
+		task.pc = this.pc;
+		task.running = this.running;
+	}
+	public void run(int instructionCount)
+	{
+		int count = 0;
+		while(running && count < instructionCount)
+		{
+			int instruction = memory[pc];
+			pc++;
+			DecodeAndExecute(instruction);
+			count++;
+			
+		}
 	}
 	public static void main(String args[]) throws IOException
 	{
 		CPU cpu = new CPU();
-		//File file = new File("AssemblyLevelTest1.asm");
-		//String fullPath = file.getAbsolutePath();
 		Assembler assembler = new Assembler();
-		assembler.assemble("AssemblyLevelTest1.asm", cpu.memory);
-		cpu.registers[7] = 256;
-		for(int i=0;i<7;i++)
+		HashMap<String,Integer> label = assembler.assemble("AssemblyLevelTest1.asm", cpu.memory);
+		cpu.loadProgram("Program_log.mem");
+		Task t1 = new Task(1,label.get("task1"));
+		Task t2 = new Task(2,label.get("task2"));
+		Task tasks[] = {t1,t2};
+		int current = 0;
+		int timeslice = 3;
+		boolean allFinished;
+		while(true)
 		{
-			cpu.registers[i] = 0;
+			allFinished = true;
+			for(int i=0;i<tasks.length;i++)
+			{
+				if(tasks[i].running)
+				{
+					allFinished = false;
+					cpu.loadTask(tasks[i]);
+					cpu.run(timeslice);
+					cpu.saveTask(tasks[i]);
+				}
+			}
+			if(allFinished)
+			{
+				break;
+			}
+			current = (current+1)%tasks.length;
 		}
-		cpu.run();
+		System.out.println("All Task Finished");
 	}
 }
